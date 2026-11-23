@@ -1,23 +1,33 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.js';
 import { JwtAuthGuard } from '../auth/guards/auth.guard.js';
-import { ApiJwtAuth } from '../common/swagger/api-docs.decorators.js';
-// TODO étape 1 : importez ExpensesService (./expenses.service.js).
-// Rappel : en ESM, les imports locaux doivent se terminer par « .js ».
+import {
+  ApiErrors,
+  ApiJwtAuth,
+} from '../common/swagger/api-docs.decorators.js';
+import { ExpensesService } from './expenses.service.js';
 
-// Toutes les routes de ce contrôleur commencent par /wallets/:walletId/expenses
-// et exigent un jeton JWT (JwtAuthGuard) : c'est déjà configuré.
 @Controller('wallets/:walletId/expenses')
 @ApiTags('expenses')
 @UseGuards(JwtAuthGuard)
 @ApiJwtAuth()
 export class ExpensesController {
-  // TODO étape 1 : injectez ExpensesService par le constructeur.
+  constructor(private readonly expensesService: ExpensesService) {}
 
-  // TODO étape 1 : route GET (liste des dépenses + total).
-  //   Décorateurs utiles : @Get(), @Param('walletId'), @Req() (type AuthenticatedRequest,
-  //   l'identifiant de l'utilisateur est dans request.user.userId).
-  //   Le contrôleur ne fait que déléguer au service : findAll(walletId, userId).
+  @Get()
+  @ApiOperation({ summary: 'Lister les dépenses et leur total' })
+  @ApiOkResponse({ description: 'Dépenses du porte-monnaie et montant total.' })
+  @ApiErrors({
+    403: 'L’utilisateur n’est pas membre du porte-monnaie.',
+    404: 'Porte-monnaie introuvable.',
+  })
+  findAll(
+    @Param('walletId') walletId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.expensesService.findAll(walletId, request.user.userId);
+  }
 
   // TODO étape 2 : route POST (déclarer une dépense). Utilisez @Body() avec CreateExpenseDto.
 
