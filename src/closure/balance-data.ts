@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-// FOURNIE - lit en base tout ce qu'il faut pour calculer un bilan :
+// FOURNIE — lit en base tout ce qu'il faut pour calculer un bilan :
 // le total, les membres et ce que chacun a payé.
 export async function loadBalanceData(
   client: Prisma.TransactionClient,

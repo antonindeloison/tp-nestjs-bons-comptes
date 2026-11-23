@@ -24,31 +24,28 @@ function byUserId(a: { userId: string }, b: { userId: string }) {
   return 0;
 }
 
-/**
- * TODO bonus : calculez la part et le solde de chaque membre.
- *
- * Règles (voir docs/bonus.md) :
- *  - Tous les montants sont des ENTIERS en centimes (jamais de nombres à virgule).
- *  - Chaque membre doit la même part : total / nombre de membres.
- *  - Le total ne se divise pas toujours exactement : le reste de la division
- *    (reste = total % nombre de membres) est réparti à raison de 1 centime en plus
- *    pour les `reste` premiers membres, dans l'ordre croissant des userId.
- *  - solde = paidAmount - shareAmount
- *      solde > 0 : le membre doit RECEVOIR de l'argent
- *      solde < 0 : le membre doit PAYER
- *
- * Il faut renvoyer :
- *  - balances : un MemberBalance par membre (triés par userId)
- *  - transfers : computeTransfers(balances) (fonction fournie ci-dessous)
- */
+// Part de chacun : division entière + 1 centime pour les `reste` premiers userId.
 export function calculateBalances(
   totalAmount: number,
   members: MemberPayment[],
 ): { balances: MemberBalance[]; transfers: Transfer[] } {
-  void totalAmount;
-  void members;
-  void byUserId;
-  throw new Error('TODO bonus : calculateBalances n’est pas encore écrite.');
+  const sortedMembers = [...members].sort(byUserId);
+  const baseShare = Math.floor(totalAmount / sortedMembers.length);
+  const remainder = totalAmount % sortedMembers.length;
+
+  const balances: MemberBalance[] = sortedMembers.map((member, index) => {
+    const shareAmount = index < remainder ? baseShare + 1 : baseShare;
+
+    return {
+      userId: member.userId,
+      name: member.name,
+      paidAmount: member.paidAmount,
+      shareAmount,
+      balance: member.paidAmount - shareAmount,
+    };
+  });
+
+  return { balances, transfers: computeTransfers(balances) };
 }
 
 function byAmountThenUserId(
@@ -59,7 +56,7 @@ function byAmountThenUserId(
   return byUserId(a, b);
 }
 
-// FOURNIE - Algorithme glouton : le plus gros débiteur rembourse le plus gros
+// FOURNIE — Algorithme glouton : le plus gros débiteur rembourse le plus gros
 // créancier, et ainsi de suite. Au plus n - 1 virements, sans garantie de minimum.
 export function computeTransfers(
   balances: { userId: string; balance: number }[],
