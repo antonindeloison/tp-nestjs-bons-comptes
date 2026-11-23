@@ -1,19 +1,22 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import type { AuthenticatedRequest } from '../auth/authenticated-request.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/auth.guard.js';
 import {
   ApiErrors,
@@ -21,6 +24,7 @@ import {
 } from '../common/swagger/api-docs.decorators.js';
 import { CreateExpenseDto } from './dto/create-expense.dto.js';
 import { ExpensesService } from './expenses.service.js';
+import { ExpenseOwnerGuard } from './guards/expense-owner.guard.js';
 
 @Controller('wallets/:walletId/expenses')
 @ApiTags('expenses')
@@ -38,9 +42,9 @@ export class ExpensesController {
   })
   findAll(
     @Param('walletId') walletId: string,
-    @Req() request: AuthenticatedRequest,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.expensesService.findAll(walletId, request.user.userId);
+    return this.expensesService.findAll(walletId, userId);
   }
 
   @Post()
@@ -59,13 +63,22 @@ export class ExpensesController {
   create(
     @Param('walletId') walletId: string,
     @Body() dto: CreateExpenseDto,
-    @Req() request: AuthenticatedRequest,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.expensesService.create(walletId, request.user.userId, dto);
+    return this.expensesService.create(walletId, userId, dto);
   }
 
-  // TODO étape 3 : route DELETE ':id' protégée par ExpenseOwnerGuard (@UseGuards).
-  //   Répondre 204 (@HttpCode(HttpStatus.NO_CONTENT)).
-  //   Refactorisez aussi les routes précédentes pour utiliser @CurrentUser('userId')
-  //   à la place de @Req().
+  @Delete(':id')
+  @UseGuards(ExpenseOwnerGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Supprimer une dépense' })
+  @ApiNoContentResponse({ description: 'Dépense supprimée.' })
+  @ApiErrors({
+    403: 'Seul le dépenseur ou le créateur de la dépense peut la supprimer.',
+    404: 'Dépense introuvable.',
+    409: 'Le porte-monnaie est clôturé.',
+  })
+  remove(@Param('walletId') walletId: string, @Param('id') id: string) {
+    return this.expensesService.remove(walletId, id);
+  }
 }
